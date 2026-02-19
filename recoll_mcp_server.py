@@ -62,7 +62,7 @@ async def handle_list_tools() -> list[Tool]:
             name="search_filesystem",
             description="""Search the indexed filesystem using keywords or phrases.
             Supports Boolean queries (AND, OR, NOT), phrase searches ("exact phrase"),
-            and wildcards. Results are ranked by relevance.
+            and wildcards. Results are ranked by relevance or sorted by date.
 
             Examples:
             - "todo yubikey" - finds documents with both terms
@@ -86,6 +86,12 @@ async def handle_list_tools() -> list[Tool]:
                         "type": "boolean",
                         "description": "Include content preview/abstract in results (default: true)",
                         "default": True,
+                    },
+                    "sort_by": {
+                        "type": "string",
+                        "description": "Sort order: 'relevance' (default), 'date_desc' (newest first), 'date_asc' (oldest first)",
+                        "enum": ["relevance", "date_desc", "date_asc"],
+                        "default": "relevance",
                     },
                 },
                 "required": ["query"],
@@ -211,8 +217,13 @@ async def handle_call_tool(name: str, arguments: dict) -> Sequence[TextContent]:
             query_str = arguments["query"]
             max_results = arguments.get("max_results", 20)
             include_preview = arguments.get("include_preview", True)
+            sort_by = arguments.get("sort_by", "relevance")
 
             query = db.query()
+            if sort_by == "date_desc":
+                query.sortby(field="mtime", ascending=False)
+            elif sort_by == "date_asc":
+                query.sortby(field="mtime", ascending=True)
             nres = query.execute(query_str)
 
             results = []
